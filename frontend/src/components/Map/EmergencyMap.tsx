@@ -1,27 +1,47 @@
 import React, { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet'
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  Circle,
+  useMap,
+} from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Incident, Vehicle, Facility, Hazard, IncidentRoute } from '../../types'
+
+import {
+  Incident,
+  Vehicle,
+  Facility,
+  Hazard,
+  IncidentRoute,
+} from '../../types'
 import { useTheme } from '../../contexts/ThemeContext'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
 
-// Fix default leaflet icons
+// --------------------------------------------------
+// Custom Leaflet marker icons
+// --------------------------------------------------
+
 const createCustomIcon = (bgColor: string, emoji: string) => {
   return L.divIcon({
     className: 'custom-div-icon',
-    html: `<div style="
-      background-color: ${bgColor};
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      border: 2px solid white;
-    ">${emoji}</div>`,
+    html: `
+      <div style="
+        background-color: ${bgColor};
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+        border: 2px solid white;
+      ">${emoji}</div>
+    `,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -20],
@@ -35,16 +55,32 @@ const policeIcon = createCustomIcon('#8b5cf6', '🚓')
 const hospitalIcon = createCustomIcon('#10b981', '🏥')
 const facilityIcon = createCustomIcon('#06b6d4', '🏢')
 
-function ChangeMapView({ center, zoom }: { center: [number, number]; zoom: number }) {
+// --------------------------------------------------
+// Automatically update the map center and zoom
+// --------------------------------------------------
+
+function ChangeMapView({
+  center,
+  zoom,
+}: {
+  center: [number, number]
+  zoom: number
+}) {
   const map = useMap()
+
   useEffect(() => {
     map.setView(center, zoom)
   }, [center, zoom, map])
+
   return null
 }
 
+// --------------------------------------------------
+// Component props
+// --------------------------------------------------
+
 interface EmergencyMapProps {
-  center?: [number, number] // [lat, lng]
+  center?: [number, number]
   zoom?: number
   incidents?: Incident[]
   vehicles?: Vehicle[]
@@ -57,8 +93,12 @@ interface EmergencyMapProps {
   interactive?: boolean
 }
 
+// --------------------------------------------------
+// Emergency map
+// --------------------------------------------------
+
 export const EmergencyMap: React.FC<EmergencyMapProps> = ({
-  center = [17.4050, 78.4750], // Hyderabad default
+  center = [17.405, 78.475],
   zoom = 13,
   incidents = [],
   vehicles = [],
@@ -68,10 +108,11 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
   previewRoute = null,
   onSelectIncident,
   onRetryRoute,
+  interactive = true,
 }) => {
   const { resolvedTheme } = useTheme()
 
-  // Extract route coordinates for polyline if selected incident or preview has route
+  // Route information
   let routeCoords: [number, number][] = []
   let isFallbackRoute = false
   let warningMessage = ''
@@ -80,38 +121,49 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
 
   if (activeRoute?.geometry?.coordinates) {
     const rawCoords = activeRoute.geometry.coordinates
-    // Convert GeoJSON [lng, lat] to Leaflet [lat, lng]
-    routeCoords = rawCoords.map((c: [number, number]) => [c[1], c[0]])
+
+    // GeoJSON uses [longitude, latitude]; Leaflet uses [latitude, longitude].
+    routeCoords = rawCoords.map(
+      (coordinate: [number, number]): [number, number] => [
+        coordinate[1],
+        coordinate[0],
+      ],
+    )
+
     isFallbackRoute = Boolean(activeRoute.isFallback)
     warningMessage =
       activeRoute.warningMessage ||
-      'Non-navigable diagnostic straight-line. Live road routing unavailable. Do not use for emergency navigation.'
+      'Road routing is unavailable. This is a diagnostic line, not a verified road route. Do not use it for real emergency navigation.'
   }
 
-  // Theme-aware tile layer
-  const tileUrl =
-    resolvedTheme === 'dark'
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+  // Use OpenStreetMap tiles in both dashboard themes to avoid CARTO API-key tiles.
+  const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+  const tileAttribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
   return (
     <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl bg-slate-100 dark:bg-slate-900 transition-colors">
       <MapContainer
         center={center}
         zoom={zoom}
-        scrollWheelZoom={true}
+        scrollWheelZoom={interactive}
+        dragging={interactive}
+        doubleClickZoom={interactive}
+        touchZoom={interactive}
+        keyboard={interactive}
         className="w-full h-full"
       >
         <ChangeMapView center={center} zoom={zoom} />
 
-        {/* Dynamic theme-aware tile layer */}
         <TileLayer
           key={resolvedTheme}
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          attribution={tileAttribution}
           url={tileUrl}
+          maxZoom={19}
         />
 
-        {/* Route Polyline */}
+        {/* Route polyline */}
         {routeCoords.length > 1 && (
           <Polyline
             positions={routeCoords}
@@ -124,30 +176,41 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
           />
         )}
 
-        {/* Incidents Markers */}
-        {incidents.map((inc) => {
-          if (!inc.source?.coordinates) return null
-          const pos: [number, number] = [inc.source.coordinates[1], inc.source.coordinates[0]] // [lat, lng]
+        {/* Incident markers */}
+        {incidents.map((incident) => {
+          if (!incident.source?.coordinates) return null
+
+          const position: [number, number] = [
+            incident.source.coordinates[1],
+            incident.source.coordinates[0],
+          ]
+
           return (
             <Marker
-              key={inc._id}
-              position={pos}
+              key={incident._id}
+              position={position}
               icon={incidentIcon}
               eventHandlers={{
-                click: () => onSelectIncident?.(inc),
+                click: () => onSelectIncident?.(incident),
               }}
             >
               <Popup>
-                <div className="p-1 min-w-[180px] text-slate-900 dark:text-slate-100">
-                  <div className="font-bold text-sm text-red-600 flex items-center gap-1">
-                    🚨 {inc.incidentNumber}
+                <div className="p-1 min-w-[180px] text-slate-900">
+                  <div className="font-bold text-sm text-red-600">
+                    🚨 {incident.incidentNumber}
                   </div>
-                  <div className="text-xs font-semibold mt-1">Status: {inc.status}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{inc.description}</div>
-                  <div className="text-xs text-slate-500 mt-1">Severity: {inc.severity} / 5</div>
+                  <div className="text-xs font-semibold mt-1">
+                    Status: {incident.status}
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    {incident.description}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Severity: {incident.severity} / 5
+                  </div>
                   {onSelectIncident && (
                     <button
-                      onClick={() => onSelectIncident(inc)}
+                      onClick={() => onSelectIncident(incident)}
                       className="mt-2 w-full bg-red-600 text-white text-xs py-1 px-2 rounded font-medium hover:bg-red-700 transition"
                     >
                       View Details
@@ -159,55 +222,100 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
           )
         })}
 
-        {/* Fleet Vehicles Markers */}
-        {vehicles.map((v) => {
-          if (!v.currentLocation?.coordinates) return null
-          const pos: [number, number] = [
-            v.currentLocation.coordinates[1],
-            v.currentLocation.coordinates[0],
+        {/* Emergency vehicle markers */}
+        {vehicles.map((vehicle) => {
+          if (!vehicle.currentLocation?.coordinates) return null
+
+          const position: [number, number] = [
+            vehicle.currentLocation.coordinates[1],
+            vehicle.currentLocation.coordinates[0],
           ]
-          let vIcon = ambulanceIcon
-          if (v.type === 'fire_engine' || v.type === 'rescue_vehicle') vIcon = fireIcon
-          if (v.type === 'patrol_car') vIcon = policeIcon
+
+          let vehicleIcon = ambulanceIcon
+          if (
+            vehicle.type === 'fire_engine' ||
+            vehicle.type === 'rescue_vehicle'
+          ) {
+            vehicleIcon = fireIcon
+          }
+          if (vehicle.type === 'patrol_car') {
+            vehicleIcon = policeIcon
+          }
 
           return (
-            <Marker key={v._id} position={pos} icon={vIcon}>
+            <Marker
+              key={vehicle._id}
+              position={position}
+              icon={vehicleIcon}
+            >
               <Popup>
-                <div className="p-1 min-w-[180px] text-slate-900 dark:text-slate-100">
-                  <div className="font-bold text-sm text-blue-600 flex items-center gap-1">
-                    {v.plateNumber}
+                <div className="p-1 min-w-[180px] text-slate-900">
+                  <div className="font-bold text-sm text-blue-600">
+                    {vehicle.plateNumber}
                   </div>
-                  <div className="text-xs font-semibold mt-1 capitalize">Type: {v.type.replace('_', ' ')}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 capitalize">Status: {v.status}</div>
-                  {v.speed !== undefined && (
-                    <div className="text-xs text-slate-500 mt-1">Speed: {v.speed} km/h</div>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          )
-        })}
-
-        {/* Facilities Markers */}
-        {facilities.map((f) => {
-          if (!f.location?.coordinates) return null
-          const pos: [number, number] = [f.location.coordinates[1], f.location.coordinates[0]]
-          const isHosp = f.type === 'hospital'
-
-          return (
-            <Marker key={f._id} position={pos} icon={isHosp ? hospitalIcon : facilityIcon}>
-              <Popup>
-                <div className="p-1 min-w-[200px] text-slate-900 dark:text-slate-100">
-                  <div className="font-bold text-sm text-emerald-600">{f.name}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 capitalize">Type: {f.type}</div>
-                  {isHosp && f.bedCapacity && (
-                    <div className="text-xs mt-1 bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded border border-emerald-200 dark:border-emerald-800">
-                      <div>Available Beds: <strong>{f.bedCapacity.available} / {f.bedCapacity.total}</strong></div>
-                      <div>ICU Available: <strong>{f.bedCapacity.icuAvailable} / {f.bedCapacity.icuTotal}</strong></div>
+                  <div className="text-xs font-semibold mt-1 capitalize">
+                    Type: {vehicle.type.replace(/_/g, ' ')}
+                  </div>
+                  <div className="text-xs text-slate-600 capitalize">
+                    Status: {vehicle.status}
+                  </div>
+                  {vehicle.speed !== undefined && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      Speed: {vehicle.speed} km/h
                     </div>
                   )}
-                  {f.contactPhone && (
-                    <div className="text-xs text-slate-500 mt-1">📞 {f.contactPhone}</div>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
+
+        {/* Hospital and facility markers */}
+        {facilities.map((facility) => {
+          if (!facility.location?.coordinates) return null
+
+          const position: [number, number] = [
+            facility.location.coordinates[1],
+            facility.location.coordinates[0],
+          ]
+          const isHospital = facility.type === 'hospital'
+
+          return (
+            <Marker
+              key={facility._id}
+              position={position}
+              icon={isHospital ? hospitalIcon : facilityIcon}
+            >
+              <Popup>
+                <div className="p-1 min-w-[200px] text-slate-900">
+                  <div className="font-bold text-sm text-emerald-600">
+                    {facility.name}
+                  </div>
+                  <div className="text-xs text-slate-600 capitalize">
+                    Type: {facility.type}
+                  </div>
+                  {isHospital && facility.bedCapacity && (
+                    <div className="text-xs mt-1 bg-emerald-50 p-1.5 rounded border border-emerald-200">
+                      <div>
+                        Available Beds:{' '}
+                        <strong>
+                          {facility.bedCapacity.available} /{' '}
+                          {facility.bedCapacity.total}
+                        </strong>
+                      </div>
+                      <div>
+                        ICU Available:{' '}
+                        <strong>
+                          {facility.bedCapacity.icuAvailable} /{' '}
+                          {facility.bedCapacity.icuTotal}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+                  {facility.contactPhone && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      📞 {facility.contactPhone}
+                    </div>
                   )}
                 </div>
               </Popup>
@@ -215,15 +323,20 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
           )
         })}
 
-        {/* Hazards Zones */}
-        {hazards.map((h) => {
-          if (!h.location?.coordinates) return null
-          const pos: [number, number] = [h.location.coordinates[1], h.location.coordinates[0]]
+        {/* Hazard zones */}
+        {hazards.map((hazard) => {
+          if (!hazard.location?.coordinates) return null
+
+          const position: [number, number] = [
+            hazard.location.coordinates[1],
+            hazard.location.coordinates[0],
+          ]
+
           return (
             <Circle
-              key={h._id}
-              center={pos}
-              radius={h.radiusMeters || 150}
+              key={hazard._id}
+              center={position}
+              radius={hazard.radiusMeters || 150}
               pathOptions={{
                 color: '#f97316',
                 fillColor: '#f97316',
@@ -232,10 +345,16 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
               }}
             >
               <Popup>
-                <div className="p-1 text-slate-900 dark:text-slate-100">
-                  <div className="font-bold text-sm text-orange-600">⚠️ {h.title}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300">{h.description}</div>
-                  <div className="text-xs text-slate-500 mt-1">Caution: Active road hazard</div>
+                <div className="p-1 text-slate-900">
+                  <div className="font-bold text-sm text-orange-600">
+                    ⚠️ {hazard.title}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    {hazard.description}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Caution: Active road hazard
+                  </div>
                 </div>
               </Popup>
             </Circle>
@@ -243,7 +362,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
         })}
       </MapContainer>
 
-      {/* Explicit Non-Navigable Diagnostic Route Fallback Warning (Section 4.B) */}
+      {/* Explicit warning for diagnostic fallback routes */}
       {isFallbackRoute && (
         <div className="absolute bottom-4 left-4 right-4 sm:right-auto max-w-md z-[500] bg-amber-950/95 border border-amber-500/80 text-amber-200 text-xs p-3 rounded-lg shadow-2xl backdrop-blur-md flex flex-col gap-2">
           <div className="flex items-start gap-2">
@@ -257,6 +376,7 @@ export const EmergencyMap: React.FC<EmergencyMapProps> = ({
               </p>
             </div>
           </div>
+
           {onRetryRoute && (
             <button
               onClick={onRetryRoute}
