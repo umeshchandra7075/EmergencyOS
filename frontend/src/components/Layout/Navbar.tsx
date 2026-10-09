@@ -1,0 +1,163 @@
+import React from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { UserRole } from '../../types'
+import { AlertTriangle, Shield, Activity, MapPin, Hospital, Users, LogOut } from 'lucide-react'
+
+export const Navbar: React.FC = () => {
+  const { user, role, logout } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
+
+  const roleBadgeColors: Record<string, string> = {
+    [UserRole.CITIZEN]: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    [UserRole.DISPATCHER]: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    [UserRole.RESPONDER]: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    [UserRole.DRIVER]: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    [UserRole.HOSPITAL_STAFF]: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    [UserRole.ADMIN]: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+  }
+
+  const isActive = (path: string) => location.pathname === path
+
+  return (
+    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        {/* Brand */}
+        <div className="flex items-center gap-6">
+          <Link to="/" className="flex items-center gap-2 text-xl font-black tracking-tight text-white group">
+            <span className="p-2 bg-red-600/20 border border-red-500/40 text-red-500 rounded-lg group-hover:scale-105 transition">
+              🚨
+            </span>
+            <span>
+              Emergency<span className="text-red-500">OS</span>
+            </span>
+          </Link>
+
+          {/* Navigation Links based on role */}
+          {user && (
+            <nav className="hidden md:flex items-center gap-1">
+              <Link
+                to="/"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  isActive('/')
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                Dashboard
+              </Link>
+
+              {role === UserRole.CITIZEN && (
+                <Link
+                  to="/sos"
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                    isActive('/sos')
+                      ? 'bg-red-600/30 text-red-300 border border-red-500/40'
+                      : 'text-red-400 hover:bg-red-950/40'
+                  }`}
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Report SOS
+                </Link>
+              )}
+
+              <Link
+                to="/facilities"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                  isActive('/facilities')
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <Hospital className="w-4 h-4" />
+                Facilities
+              </Link>
+
+              {(role === UserRole.HOSPITAL_STAFF || role === UserRole.ADMIN) && (
+                <Link
+                  to="/hospital"
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    isActive('/hospital')
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  }`}
+                >
+                  Bed Capacity
+                </Link>
+              )}
+
+              {role === UserRole.ADMIN && (
+                <Link
+                  to="/admin"
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                    isActive('/admin')
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  Admin
+                </Link>
+              )}
+            </nav>
+          )}
+        </div>
+
+        {/* Right side controls */}
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              {/* Role Badge */}
+              <div
+                className={`hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border capitalize font-semibold ${
+                  role ? roleBadgeColors[role] || 'bg-slate-800 text-slate-300' : ''
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                {role?.replace('_', ' ')}
+              </div>
+
+              {/* User Name */}
+              <div className="text-right hidden sm:block">
+                <div className="text-sm font-semibold text-white leading-tight">{user.name}</div>
+                <div className="text-xs text-slate-400 leading-tight">{user.email}</div>
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition"
+                title="Sign out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/login"
+                className="text-sm px-4 py-1.5 font-medium text-slate-300 hover:text-white transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="text-sm px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition"
+              >
+                Register
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+export default Navbar
