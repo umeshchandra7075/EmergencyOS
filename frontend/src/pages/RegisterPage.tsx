@@ -8,7 +8,6 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('citizen')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -17,7 +16,7 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault()
     setLoading(true)
 
-    const success = await register(name, email, password, role, phone)
+    const success = await register(name, email, password, phone)
     setLoading(false)
 
     if (success) {
@@ -36,10 +35,10 @@ export const RegisterPage: React.FC = () => {
             🚨
           </div>
           <h2 className="mt-4 text-3xl font-extrabold text-white tracking-tight">
-            Create an Account
+            Citizen Registration
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            Join the EmergencyOS route coordination network
+            Create an EmergencyOS public account to report emergencies and track rescue units
           </p>
         </div>
 
@@ -87,22 +86,6 @@ export const RegisterPage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-              Account Role
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition"
-            >
-              <option value="citizen">Public User / Citizen</option>
-              <option value="dispatcher">Emergency Dispatcher</option>
-              <option value="responder">First Responder / Ambulance Driver</option>
-              <option value="hospital_staff">Hospital Facility Staff</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
               Password
             </label>
             <input
@@ -121,9 +104,13 @@ export const RegisterPage: React.FC = () => {
             disabled={loading}
             className="w-full mt-4 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition shadow-lg shadow-red-900/30 disabled:opacity-50"
           >
-            {loading ? 'Creating Account...' : 'Register'}
+            {loading ? 'Registering...' : 'Create Account'}
           </button>
         </form>
+
+        <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] text-slate-400 text-center">
+          ℹ️ Dispatcher, Responder, and Hospital accounts are provisioned by network administrators.
+        </div>
 
         <div className="text-center text-xs text-slate-400">
           Already registered?{' '}

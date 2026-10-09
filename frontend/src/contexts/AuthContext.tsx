@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import api from '../services/api'
+import api, { setAccessToken } from '../services/api'
 import { User, UserRole } from '../types'
 
 interface AuthContextType {
@@ -7,7 +7,7 @@ interface AuthContextType {
   role: UserRole | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, password: string, role?: string, phone?: string) => Promise<boolean>
+  register: (name: string, email: string, password: string, phone?: string) => Promise<boolean>
   logout: () => Promise<void>
 }
 
@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.data.success && res.data.data) {
         setUser(res.data.data)
         if (res.data.data.accessToken) {
-          localStorage.setItem('emergencyos_token', res.data.data.accessToken)
+          setAccessToken(res.data.data.accessToken)
         }
         return true
       }
@@ -62,15 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     email: string,
     password: string,
-    role?: string,
     phone?: string
   ): Promise<boolean> => {
     try {
-      const res = await api.post('/auth/register', { name, email, password, role, phone })
+      const res = await api.post('/auth/register', { name, email, password, phone })
       if (res.data.success && res.data.data) {
         setUser(res.data.data)
         if (res.data.data.accessToken) {
-          localStorage.setItem('emergencyos_token', res.data.data.accessToken)
+          setAccessToken(res.data.data.accessToken)
         }
         return true
       }
@@ -86,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       // ignore
     } finally {
-      localStorage.removeItem('emergencyos_token')
+      setAccessToken(null)
       setUser(null)
     }
   }

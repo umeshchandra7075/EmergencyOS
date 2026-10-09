@@ -37,10 +37,31 @@ export async function updateVehicleLocation(req: AuthenticatedRequest, res: Resp
     const { id } = req.params
     const { latitude, longitude, heading = 0, speed = 0, status } = req.body
 
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      isNaN(latitude) ||
+      isNaN(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Valid latitude and longitude are required.',
+        message: 'Invalid coordinate bounds. Latitude must be between -90 and 90, Longitude between -180 and 180.',
+      })
+    }
+
+    const existingVehicle = await Vehicle.findById(id)
+    if (!existingVehicle) {
+      return res.status(404).json({ success: false, message: 'Vehicle not found.' })
+    }
+
+    if (req.user?.role !== 'admin' && String(existingVehicle.driver) !== String(req.user?._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You are not authorized to update GPS for another responder unit.',
       })
     }
 

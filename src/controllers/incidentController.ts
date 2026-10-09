@@ -45,6 +45,23 @@ export async function createIncident(req: AuthenticatedRequest, res: Response) {
       })
     }
 
+    // GEO-01: Coordinate bounds validation
+    if (
+      typeof sourceCoords[0] !== 'number' ||
+      typeof sourceCoords[1] !== 'number' ||
+      isNaN(sourceCoords[0]) ||
+      isNaN(sourceCoords[1]) ||
+      sourceCoords[0] < -180 ||
+      sourceCoords[0] > 180 ||
+      sourceCoords[1] < -90 ||
+      sourceCoords[1] > 90
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid coordinate bounds. Longitude must be between -180 and 180, Latitude between -90 and 90.',
+      })
+    }
+
     // Auto-locate nearest hospital if medical emergency and destination is not provided
     let assignedHospitalId: any = null
     let targetDestCoords: [number, number] | null = null
@@ -307,6 +324,14 @@ export async function assignIncident(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ success: false, message: 'Incident not found.' })
     }
 
+    // Pre-check incident state before vehicle lock
+    if (![IncidentStatus.REPORTED, IncidentStatus.ACKNOWLEDGED].includes(incident.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Incident is in '${incident.status}' state and cannot be assigned.`,
+      })
+    }
+
     // Atomic assignment check on vehicle: vehicle must be available
     const vehicle = await Vehicle.findOneAndUpdate(
       { _id: vehicleId, status: VehicleStatus.AVAILABLE },
@@ -325,48 +350,73 @@ export async function assignIncident(req: AuthenticatedRequest, res: Response) {
     }
 
     // Calculate route from vehicle's current location to incident location
+    let routeToIncident = incident.currentRoute
     if (vehicle.currentLocation?.coordinates && incident.source?.coordinates) {
       try {
-        const routeToIncident = await calculateRoute(
+        routeToIncident = await calculateRoute(
           vehicle.currentLocation.coordinates,
           incident.source.coordinates
         )
-        incident.currentRoute = routeToIncident
       } catch (e) {
         console.warn('Failed to calculate vehicle dispatch route:', e)
       }
     }
 
-    incident.status = IncidentStatus.ASSIGNED
-    incident.assignedVehicle = vehicle._id
-    incident.assignedResponder = responderId || vehicle.driver
-    incident.assignedAt = new Date()
+    // SEC-04: Atomic Incident-Vehicle Double-Lock
+    // Atomically transition the incident only if it remains in assignable state
+    const updatedIncident = await Incident.findOneAndUpdate(
+      {
+        _id: id,
+        status: { $in: [IncidentStatus.REPORTED, IncidentStatus.ACKNOWLEDGED] },
+      },
+      {
+        $set: {
+          status: IncidentStatus.ASSIGNED,
+          assignedVehicle: vehicle._id,
+          assignedResponder: responderId || vehicle.driver,
+          assignedAt: new Date(),
+          currentRoute: routeToIncident,
+        },
+        $push: {
+          timeline: {
+            status: IncidentStatus.ASSIGNED,
+            timestamp: new Date(),
+            actor: user._id,
+            actorRole: user.role,
+            note: `Assigned to unit ${vehicle.plateNumber}`,
+          },
+        },
+      },
+      { new: true }
+    )
 
-    incident.timeline.push({
-      status: IncidentStatus.ASSIGNED,
-      timestamp: new Date(),
-      actor: user._id,
-      actorRole: user.role,
-      note: `Assigned to vehicle ${vehicle.plateNumber}`,
-    })
-
-    await incident.save()
+    if (!updatedIncident) {
+      // Concurrency conflict: incident was assigned by another dispatcher. Rollback vehicle!
+      await Vehicle.findByIdAndUpdate(vehicleId, {
+        status: VehicleStatus.AVAILABLE,
+        $unset: { currentIncident: 1 },
+      })
+      return res.status(409).json({
+        success: false,
+        message: 'Concurrent assignment conflict: Incident has already transitioned to another state.',
+      })
+    }
 
     // Populate for clean response
-    await incident.populate('assignedVehicle')
-    await incident.populate('assignedResponder', 'name email phone')
+    await updatedIncident.populate('assignedVehicle')
+    await updatedIncident.populate('assignedResponder', 'name email phone')
 
-    broadcastIncidentAssigned(incident, String(incident.assignedResponder))
-    broadcastIncidentUpdated(incident)
+    broadcastIncidentAssigned(updatedIncident, String(updatedIncident.assignedResponder))
+    broadcastIncidentUpdated(updatedIncident)
 
     await logAudit({
       action: 'INCIDENT_ASSIGNED',
       entityType: 'Incident',
-      entityId: incident._id,
+      entityId: updatedIncident._id,
       actorId: user._id,
       actorEmail: user.email,
       actorRole: user.role,
-      newState: { vehicleId, responderId: incident.assignedResponder },
+      newState: { vehicleId, responderId: updatedIncident.assignedResponder },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     })
@@ -374,7 +424,7 @@ export async function assignIncident(req: AuthenticatedRequest, res: Response) {
     return res.json({
       success: true,
       message: 'Responder assigned successfully.',
-      data: incident,
+      data: updatedIncident,
     })
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message })
@@ -389,6 +439,17 @@ export async function acceptIncident(req: AuthenticatedRequest, res: Response) {
     const incident = await Incident.findById(id)
     if (!incident) {
       return res.status(404).json({ success: false, message: 'Incident not found.' })
+    }
+
+    // SEC-03: Responder ownership enforcement
+    if (
+      user.role !== UserRole.ADMIN &&
+      String(incident.assignedResponder) !== String(user._id)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You are not the assigned responder for this incident.',
+      })
     }
 
     if (incident.status !== IncidentStatus.ASSIGNED) {
@@ -441,6 +502,17 @@ export async function rejectIncident(req: AuthenticatedRequest, res: Response) {
     const incident = await Incident.findById(id)
     if (!incident) {
       return res.status(404).json({ success: false, message: 'Incident not found.' })
+    }
+
+    // SEC-03: Responder ownership enforcement
+    if (
+      user.role !== UserRole.ADMIN &&
+      String(incident.assignedResponder) !== String(user._id)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You are not the assigned responder for this incident.',
+      })
     }
 
     if (incident.status !== IncidentStatus.ASSIGNED) {
@@ -505,6 +577,35 @@ export async function updateIncidentStatus(req: AuthenticatedRequest, res: Respo
     const incident = await Incident.findById(id)
     if (!incident) {
       return res.status(404).json({ success: false, message: 'Incident not found.' })
+    }
+
+    // SEC-03: Authorization & Ownership Validation
+    if (user.role === UserRole.CITIZEN) {
+      if (String(incident.citizen) !== String(user._id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You cannot modify incidents created by other citizens.',
+        })
+      }
+      if (targetStatus !== IncidentStatus.CANCELLED) {
+        return res.status(403).json({
+          success: false,
+          message: 'Citizens are only authorized to cancel their own reported incidents.',
+        })
+      }
+      if ([IncidentStatus.EN_ROUTE, IncidentStatus.ON_SCENE, IncidentStatus.RESOLVED].includes(incident.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot cancel incident once responder unit is en route or on scene. Please contact dispatcher.',
+        })
+      }
+    } else if (user.role === UserRole.RESPONDER || user.role === UserRole.DRIVER) {
+      if (String(incident.assignedResponder) !== String(user._id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You are not the assigned responder for this incident.',
+        })
+      }
     }
 
     const permitted = PERMITTED_STATUS_TRANSITIONS[incident.status] || []

@@ -33,6 +33,20 @@ export async function getNearestFacilities(req: Request, res: Response) {
     const longitude = parseFloat(lng as string)
     const latitude = parseFloat(lat as string)
 
+    if (
+      isNaN(longitude) ||
+      isNaN(latitude) ||
+      longitude < -180 ||
+      longitude > 180 ||
+      latitude < -90 ||
+      latitude > 90
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid coordinate bounds. Longitude must be between -180 and 180, Latitude between -90 and 90.',
+      })
+    }
+
     const matchQuery: any = { isActive: true }
     if (type) matchQuery.type = type
 

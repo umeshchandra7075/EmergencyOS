@@ -83,6 +83,10 @@ export function initSocketServer(server: HttpServer): Server {
         if (isReporter || isAssigned || isStaff) {
           socket.join(`incident:${incidentId}`)
           console.log(`[Socket] User ${user.email} joined room incident:${incidentId}`)
+        } else {
+          socket.emit('error:authorization', {
+            message: 'Unauthorized: You are not authorized to subscribe to this incident room.',
+          })
         }
       } catch (err) {
         console.error('Error joining incident room:', err)
@@ -100,11 +104,33 @@ export function initSocketServer(server: HttpServer): Server {
       try {
         // Verify user is authorized responder/driver
         if (![UserRole.RESPONDER, UserRole.DRIVER, UserRole.ADMIN].includes(user.role)) {
+          socket.emit('error:authorization', { message: 'Forbidden: Role not authorized to emit GPS updates.' })
           return
         }
 
         const { vehicleId, coordinates, heading, speed, incidentId } = data
         if (!coordinates || coordinates.length !== 2) return
+
+        // GEO-01: Coordinate bounds validation on socket event
+        if (
+          coordinates[0] < -180 ||
+          coordinates[0] > 180 ||
+          coordinates[1] < -90 ||
+          coordinates[1] > 90
+        ) {
+          return
+        }
+
+        // Verify responder ownership of this vehicle
+        const vehicle = await Vehicle.findById(vehicleId)
+        if (!vehicle) return
+
+        if (user.role !== UserRole.ADMIN && String(vehicle.driver) !== String(user._id)) {
+          socket.emit('error:authorization', {
+            message: 'Forbidden: Cannot update coordinates of vehicle assigned to another responder.',
+          })
+          return
+        }
 
         // Persist vehicle location
         await Vehicle.findByIdAndUpdate(vehicleId, {

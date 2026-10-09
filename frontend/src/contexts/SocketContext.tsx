@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from './AuthContext'
+import { getAccessToken } from '../services/api'
+import toast from 'react-hot-toast'
 
 interface SocketContextType {
   socket: Socket | null
@@ -39,7 +41,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return
     }
 
-    const token = localStorage.getItem('emergencyos_token')
+    const token = getAccessToken()
     const socketUrl = import.meta.env.VITE_API_URL || window.location.origin
 
     const newSocket = io(socketUrl, {
@@ -53,6 +55,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     newSocket.on('connect', () => {
       setConnected(true)
       console.log('⚡ Socket connected:', newSocket.id)
+    })
+
+    newSocket.on('error:authorization', (data: { message: string }) => {
+      toast.error(data.message || 'Real-time subscription unauthorized')
     })
 
     newSocket.on('disconnect', () => {

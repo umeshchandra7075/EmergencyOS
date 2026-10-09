@@ -1,13 +1,30 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { UserRole } from '../../types'
-import { AlertTriangle, Shield, Activity, MapPin, Hospital, Users, LogOut } from 'lucide-react'
+import { AlertTriangle, Shield, Hospital, Users, LogOut, Sun, Moon } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
   const { user, role, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('emergencyos_theme') as 'dark' | 'light') || 'dark'
+  })
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    localStorage.setItem('emergencyos_theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -30,7 +47,10 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2 text-xl font-black tracking-tight text-white group">
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-xl font-black tracking-tight text-white group focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg p-1"
+          >
             <span className="p-2 bg-red-600/20 border border-red-500/40 text-red-500 rounded-lg group-hover:scale-105 transition">
               🚨
             </span>
@@ -41,10 +61,10 @@ export const Navbar: React.FC = () => {
 
           {/* Navigation Links based on role */}
           {user && (
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
               <Link
                 to="/"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   isActive('/')
                     ? 'bg-slate-800 text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -56,7 +76,7 @@ export const Navbar: React.FC = () => {
               {role === UserRole.CITIZEN && (
                 <Link
                   to="/sos"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 ${
                     isActive('/sos')
                       ? 'bg-red-600/30 text-red-300 border border-red-500/40'
                       : 'text-red-400 hover:bg-red-950/40'
@@ -69,7 +89,7 @@ export const Navbar: React.FC = () => {
 
               <Link
                 to="/facilities"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   isActive('/facilities')
                     ? 'bg-slate-800 text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -82,7 +102,7 @@ export const Navbar: React.FC = () => {
               {(role === UserRole.HOSPITAL_STAFF || role === UserRole.ADMIN) && (
                 <Link
                   to="/hospital"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                     isActive('/hospital')
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -95,7 +115,7 @@ export const Navbar: React.FC = () => {
               {role === UserRole.ADMIN && (
                 <Link
                   to="/admin"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500 ${
                     isActive('/admin')
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -111,6 +131,16 @@ export const Navbar: React.FC = () => {
 
         {/* Right side controls */}
         <div className="flex items-center gap-3">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-slate-500"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle display theme"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-400" />}
+          </button>
+
           {user ? (
             <>
               {/* Role Badge */}
@@ -132,8 +162,9 @@ export const Navbar: React.FC = () => {
               {/* Logout */}
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition"
+                className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-red-500"
                 title="Sign out"
+                aria-label="Sign out"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -142,13 +173,13 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-2">
               <Link
                 to="/login"
-                className="text-sm px-4 py-1.5 font-medium text-slate-300 hover:text-white transition"
+                className="text-sm px-4 py-1.5 font-medium text-slate-300 hover:text-white transition focus:outline-none focus:ring-2 focus:ring-slate-500 rounded-lg"
               >
                 Sign In
               </Link>
               <Link
                 to="/register"
-                className="text-sm px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition"
+                className="text-sm px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 Register
               </Link>
