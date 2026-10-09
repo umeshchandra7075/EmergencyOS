@@ -35,11 +35,19 @@ describe('EmergencyOS Geospatial Engine', () => {
 })
 
 describe('Health & Diagnostic Endpoints', () => {
-  it('GET /health returns 200 and operational status', async () => {
+  it('GET /health returns 200 and liveness status', async () => {
     const res = await request(app).get('/health')
     expect(res.status).toBe(200)
     expect(res.body.status).toBe('ok')
     expect(res.body.service).toBe('EmergencyOS API')
+  })
+
+  it('GET /ready returns 200 and verified readiness state when database is connected', async () => {
+    const res = await request(app).get('/ready')
+    expect(res.status).toBe(200)
+    expect(res.body.status).toMatch(/ready|degraded/)
+    expect(res.body.database).toBe('connected')
+    expect(res.body.routing).toBeDefined()
   })
 })
 
@@ -376,5 +384,43 @@ describe('Security Hardening & Regression Suite', () => {
       expect(assignRes.status).toBe(409)
       expect(assignRes.body.message).toMatch(/Vehicle is currently unavailable/)
     }
+  })
+
+  it('ROUTE-01: Standalone route calculation endpoint calculates route between valid points', async () => {
+    const res = await request(app)
+      .post('/api/routes/calculate')
+      .set('Authorization', `Bearer ${dispatcherToken}`)
+      .send({
+        source: [78.4747, 17.3616],
+        destination: [78.4744, 17.4239],
+        alternatives: 1,
+      })
+
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.distanceMeters).toBeGreaterThan(0)
+    expect(res.body.data.geometry).toBeDefined()
+    expect(res.body.data.provider).toBeDefined()
+  })
+
+  it('ROUTE-02: Standalone route calculation rejects out-of-bounds coordinates', async () => {
+    const res = await request(app)
+      .post('/api/routes/calculate')
+      .set('Authorization', `Bearer ${dispatcherToken}`)
+      .send({
+        source: [195.0, 17.3616],
+        destination: [78.4744, 17.4239],
+      })
+
+    expect(res.status).toBe(400)
+    expect(res.body.message).toMatch(/Coordinates out of bounds/)
+  })
+
+  it('ROUTE-03: Route health check endpoint reports provider status', async () => {
+    const res = await request(app).get('/api/routes/health')
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(res.body.data.provider).toBe('OSRM')
+    expect(res.body.data.status).toMatch(/available|degraded|unavailable/)
   })
 })

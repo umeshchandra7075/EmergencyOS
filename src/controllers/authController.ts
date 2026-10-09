@@ -7,6 +7,7 @@ import Session from '../models/Session.js'
 import { UserRole } from '../config/constants.js'
 import { AuthenticatedRequest } from '../middleware/auth.js'
 import { logAudit } from '../services/auditService.js'
+import { disconnectUserSockets } from '../services/socketService.js'
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex')
@@ -255,6 +256,7 @@ export async function refreshToken(req: Request, res: Response) {
       // Token replay detected: an already-rotated token was presented!
       // Invalidate ALL sessions for this user to contain potential compromise.
       await Session.updateMany({ user: session.user }, { isRevoked: true })
+      disconnectUserSockets(String(session.user), 'Security alert: Replay attack detected')
 
       await logAudit({
         action: 'SECURITY_ALERT_REFRESH_TOKEN_REPLAY',
@@ -331,6 +333,7 @@ export async function logout(req: AuthenticatedRequest, res: Response) {
     res.clearCookie('refreshToken', { path: '/' })
 
     if (req.user) {
+      disconnectUserSockets(String(req.user._id), 'User logged out')
       await logAudit({
         action: 'USER_LOGGED_OUT',
         entityType: 'User',

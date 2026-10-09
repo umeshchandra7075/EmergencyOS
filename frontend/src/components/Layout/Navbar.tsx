@@ -1,30 +1,34 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTheme } from '../../contexts/ThemeContext'
 import { UserRole } from '../../types'
-import { AlertTriangle, Shield, Hospital, Users, LogOut, Sun, Moon } from 'lucide-react'
+import {
+  AlertTriangle,
+  Hospital,
+  Shield,
+  Truck,
+  Users,
+  BarChart3,
+  FileText,
+  User,
+  LogOut,
+  Sun,
+  Moon,
+  Laptop,
+  Menu,
+  X,
+  MapPin,
+  Compass,
+  Bell,
+} from 'lucide-react'
 
 export const Navbar: React.FC = () => {
   const { user, role, logout } = useAuth()
+  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
-
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('emergencyos_theme') as 'dark' | 'light') || 'dark'
-  })
-
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    localStorage.setItem('emergencyos_theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
-  }
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -32,161 +36,327 @@ export const Navbar: React.FC = () => {
   }
 
   const roleBadgeColors: Record<string, string> = {
-    [UserRole.CITIZEN]: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    [UserRole.DISPATCHER]: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    [UserRole.RESPONDER]: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    [UserRole.DRIVER]: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    [UserRole.HOSPITAL_STAFF]: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    [UserRole.ADMIN]: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+    [UserRole.CITIZEN]: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    [UserRole.DISPATCHER]: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    [UserRole.RESPONDER]: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    [UserRole.DRIVER]: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    [UserRole.HOSPITAL_STAFF]: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    [UserRole.ADMIN]: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
   }
 
   const isActive = (path: string) => location.pathname === path
 
+  const navLinkClass = (path: string) =>
+    `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5 ${
+      isActive(path)
+        ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50'
+        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+    }`
+
   return (
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md">
+    <header className="bg-white/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 backdrop-blur-md transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <Link
             to="/"
-            className="flex items-center gap-2 text-xl font-black tracking-tight text-white group focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg p-1"
+            className="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900 dark:text-white group focus:outline-none focus:ring-2 focus:ring-red-500 rounded-lg p-1"
           >
-            <span className="p-2 bg-red-600/20 border border-red-500/40 text-red-500 rounded-lg group-hover:scale-105 transition">
+            <span className="p-1.5 bg-red-600/10 dark:bg-red-600/20 border border-red-500/30 text-red-600 dark:text-red-500 rounded-lg group-hover:scale-105 transition">
               🚨
             </span>
             <span>
-              Emergency<span className="text-red-500">OS</span>
+              Emergency<span className="text-red-600 dark:text-red-500">OS</span>
             </span>
           </Link>
 
-          {/* Navigation Links based on role */}
+          {/* Desktop Navigation */}
           {user && (
-            <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
-              <Link
-                to="/"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  isActive('/')
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
-              >
+            <nav className="hidden xl:flex items-center gap-1 ml-2" aria-label="Main Navigation">
+              <Link to="/" className={navLinkClass('/')}>
                 Dashboard
               </Link>
 
-              {role === UserRole.CITIZEN && (
-                <Link
-                  to="/sos"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                    isActive('/sos')
-                      ? 'bg-red-600/30 text-red-300 border border-red-500/40'
-                      : 'text-red-400 hover:bg-red-950/40'
-                  }`}
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  Report SOS
-                </Link>
-              )}
+              <Link to="/planner" className={navLinkClass('/planner')}>
+                <Compass className="w-3.5 h-3.5" />
+                Route Planner
+              </Link>
 
-              <Link
-                to="/facilities"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  isActive('/facilities')
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
-              >
-                <Hospital className="w-4 h-4" />
+              <Link to="/incidents" className={navLinkClass('/incidents')}>
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Incidents
+              </Link>
+
+              <Link to="/live-map" className={navLinkClass('/live-map')}>
+                <MapPin className="w-3.5 h-3.5" />
+                Live Map
+              </Link>
+
+              <Link to="/facilities" className={navLinkClass('/facilities')}>
+                <Hospital className="w-3.5 h-3.5" />
                 Facilities
               </Link>
 
-              {(role === UserRole.HOSPITAL_STAFF || role === UserRole.ADMIN) && (
-                <Link
-                  to="/hospital"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    isActive('/hospital')
-                      ? 'bg-slate-800 text-white'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Bed Capacity
+              {[UserRole.DISPATCHER, UserRole.ADMIN].includes(role as UserRole) && (
+                <>
+                  <Link to="/vehicles" className={navLinkClass('/vehicles')}>
+                    <Truck className="w-3.5 h-3.5" />
+                    Vehicles
+                  </Link>
+
+                  <Link to="/responders" className={navLinkClass('/responders')}>
+                    <Users className="w-3.5 h-3.5" />
+                    Responders
+                  </Link>
+                </>
+              )}
+
+              {[UserRole.DISPATCHER, UserRole.ADMIN, UserRole.HOSPITAL_STAFF].includes(role as UserRole) && (
+                <Link to="/analytics" className={navLinkClass('/analytics')}>
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Analytics
                 </Link>
               )}
 
               {role === UserRole.ADMIN && (
+                <>
+                  <Link to="/admin" className={navLinkClass('/admin')}>
+                    <Shield className="w-3.5 h-3.5" />
+                    Admin
+                  </Link>
+                  <Link to="/audit-logs" className={navLinkClass('/audit-logs')}>
+                    <FileText className="w-3.5 h-3.5" />
+                    Audit Logs
+                  </Link>
+                </>
+              )}
+
+              {role === UserRole.CITIZEN && (
                 <Link
-                  to="/admin"
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500 ${
-                    isActive('/admin')
-                      ? 'bg-slate-800 text-white'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
+                  to="/sos"
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-red-600 text-white hover:bg-red-700 shadow-sm"
                 >
-                  <Users className="w-4 h-4" />
-                  Admin
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  SOS Report
                 </Link>
               )}
             </nav>
           )}
         </div>
 
-        {/* Right side controls */}
-        <div className="flex items-center gap-3">
-          {/* Theme Toggle Button */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-slate-500"
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            aria-label="Toggle display theme"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-blue-400" />}
-          </button>
+        {/* Right Section: Theme Toggle, Notifications, User info, Logout */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Theme Selector Toggle */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => setTheme('light')}
+              title="Light theme"
+              aria-label="Switch to light theme"
+              className={`p-1 rounded transition ${
+                theme === 'light'
+                  ? 'bg-white text-amber-500 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Sun className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              title="Dark theme"
+              aria-label="Switch to dark theme"
+              className={`p-1 rounded transition ${
+                theme === 'dark'
+                  ? 'bg-slate-900 text-sky-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Moon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setTheme('system')}
+              title="System theme"
+              aria-label="Follow system theme"
+              className={`p-1 rounded transition ${
+                theme === 'system'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-500 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Laptop className="w-4 h-4" />
+            </button>
+          </div>
 
-          {user ? (
+          {user && (
             <>
-              {/* Role Badge */}
-              <div
-                className={`hidden sm:flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border capitalize font-semibold ${
-                  role ? roleBadgeColors[role] || 'bg-slate-800 text-slate-300' : ''
+              {/* Notifications Pill */}
+              <Link
+                to="/notifications"
+                title="Notifications"
+                aria-label="Notifications"
+                className={`p-2 rounded-lg transition border ${
+                  isActive('/notifications')
+                    ? 'bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-800'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <Shield className="w-3.5 h-3.5" />
-                {role?.replace('_', ' ')}
-              </div>
+                <Bell className="w-4 h-4" />
+              </Link>
 
-              {/* User Name */}
-              <div className="text-right hidden sm:block">
-                <div className="text-sm font-semibold text-white leading-tight">{user.name}</div>
-                <div className="text-xs text-slate-400 leading-tight">{user.email}</div>
-              </div>
+              {/* User Profile Info */}
+              <Link
+                to="/profile"
+                className="hidden sm:flex items-center gap-2 pl-2 pr-3 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-left text-xs">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+                    {user.name.split(' ')[0]}
+                  </div>
+                  <span
+                    className={`inline-block text-[10px] uppercase font-bold px-1.5 py-0.2 rounded border ${
+                      roleBadgeColors[user.role] || 'bg-slate-500/20 text-slate-400'
+                    }`}
+                  >
+                    {user.role}
+                  </span>
+                </div>
+              </Link>
 
-              {/* Logout */}
+              {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-red-500"
-                title="Sign out"
-                aria-label="Sign out"
+                title="Log out of EmergencyOS"
+                aria-label="Logout"
+                className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4" />
               </button>
             </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                to="/login"
-                className="text-sm px-4 py-1.5 font-medium text-slate-300 hover:text-white transition focus:outline-none focus:ring-2 focus:ring-slate-500 rounded-lg"
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                className="text-sm px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                Register
-              </Link>
-            </div>
+          )}
+
+          {/* Mobile Menu Toggle Button */}
+          {user && (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle Navigation Drawer"
+              className="xl:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           )}
         </div>
       </div>
+
+      {/* Mobile Drawer Navigation */}
+      {mobileMenuOpen && user && (
+        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-3 pb-5 space-y-1 shadow-2xl">
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Dashboard
+          </Link>
+          <Link
+            to="/planner"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Emergency Route Planner
+          </Link>
+          <Link
+            to="/incidents"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Incidents
+          </Link>
+          <Link
+            to="/live-map"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Live Operations Map
+          </Link>
+          <Link
+            to="/facilities"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Facilities & Hospitals
+          </Link>
+          {[UserRole.DISPATCHER, UserRole.ADMIN].includes(role as UserRole) && (
+            <>
+              <Link
+                to="/vehicles"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Fleet Vehicles
+              </Link>
+              <Link
+                to="/responders"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Responders
+              </Link>
+            </>
+          )}
+          <Link
+            to="/notifications"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Notifications Feed
+          </Link>
+          {[UserRole.DISPATCHER, UserRole.ADMIN, UserRole.HOSPITAL_STAFF].includes(role as UserRole) && (
+            <Link
+              to="/analytics"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Analytics & Reports
+            </Link>
+          )}
+          {role === UserRole.ADMIN && (
+            <>
+              <Link
+                to="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                User Administration
+              </Link>
+              <Link
+                to="/audit-logs"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Audit Trails
+              </Link>
+            </>
+          )}
+          <Link
+            to="/profile"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            My Profile & Settings
+          </Link>
+          {role === UserRole.CITIZEN && (
+            <Link
+              to="/sos"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-sm font-bold bg-red-600 text-white text-center"
+            >
+              Report Emergency SOS
+            </Link>
+          )}
+        </div>
+      )}
     </header>
   )
 }

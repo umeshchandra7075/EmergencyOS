@@ -99,23 +99,17 @@ export const DashboardPage: React.FC = () => {
         role === UserRole.RESPONDER &&
         String(assignedIncident.assignedResponder?._id || assignedIncident.assignedResponder) === String(user?.id)
       ) {
-        toast.success(`🚑 New emergency dispatched to your unit: ${assignedIncident.incidentNumber}`)
+        toast.success(`You have been dispatched to Incident ${assignedIncident.incidentNumber}!`)
       }
     })
 
-    socket.on('vehicle:location_broadcast', (data: any) => {
+    socket.on('vehicle:location:update', (data: { vehicleId: string; coordinates: [number, number]; speed?: number; heading?: number }) => {
       setVehicles((prev) =>
         prev.map((v) =>
           v._id === data.vehicleId
-            ? { ...v, currentLocation: { type: 'Point', coordinates: data.coordinates } }
+            ? { ...v, currentLocation: { type: 'Point', coordinates: data.coordinates }, speed: data.speed ?? v.speed, heading: data.heading ?? v.heading }
             : v
         )
-      )
-    })
-
-    socket.on('facility:capacity_update', (facility: Facility) => {
-      setFacilities((prev) =>
-        prev.map((f) => (f._id === facility._id ? facility : f))
       )
     })
 
@@ -123,43 +117,46 @@ export const DashboardPage: React.FC = () => {
       socket.off('incident:created')
       socket.off('incident:updated')
       socket.off('incident:assigned')
-      socket.off('vehicle:location_broadcast')
-      socket.off('facility:capacity_update')
+      socket.off('vehicle:location:update')
     }
-  }, [socket, selectedIncident, role, user])
+  }, [socket, selectedIncident, user, role])
 
-  // Responder GPS streaming simulation loop
+  // Simulated GPS streamer for responders
   useEffect(() => {
     if (!gpsStreaming || !user?.vehicle) return
 
+    let step = 0
+    // Simulation waypoint path in Hyderabad towards patient
+    const routePoints: [number, number][] = [
+      [78.4750, 17.4100],
+      [78.4735, 17.4150],
+      [78.4720, 17.4200],
+      [78.4705, 17.4260],
+      [78.4690, 17.4320],
+      [78.4680, 17.4380],
+      [78.4680, 17.4050],
+    ]
+
     const interval = setInterval(() => {
-      // Small jitter around current vehicle location
-      const vehicle = vehicles.find((v) => v._id === user.vehicle)
-      if (vehicle) {
-        const [lng, lat] = vehicle.currentLocation.coordinates
-        const newCoords: [number, number] = [
-          parseFloat((lng + (Math.random() - 0.5) * 0.001).toFixed(5)),
-          parseFloat((lat + (Math.random() - 0.5) * 0.001).toFixed(5)),
-        ]
-        sendLocationUpdate({
-          vehicleId: vehicle._id,
-          coordinates: newCoords,
-          heading: Math.floor(Math.random() * 360),
-          speed: Math.floor(40 + Math.random() * 20),
-          incidentId: selectedIncident?._id,
-        })
-      }
-    }, 3000)
+      const coords = routePoints[step % routePoints.length]
+      sendLocationUpdate({
+        vehicleId: user.vehicle._id || user.vehicle,
+        coordinates: coords,
+        heading: (step * 35) % 360,
+        speed: 48,
+        incidentId: selectedIncident?._id,
+      })
+      step++
+    }, 4000)
 
     return () => clearInterval(interval)
-  }, [gpsStreaming, user, vehicles, selectedIncident])
+  }, [gpsStreaming, user, selectedIncident, sendLocationUpdate])
 
-  // Lifecycle action handlers
   const handleAcknowledge = async (incidentId: string) => {
     try {
       const res = await api.post(`/incidents/${incidentId}/acknowledge`)
       if (res.data.success) {
-        toast.success('Incident triaged & acknowledged.')
+        toast.success('Incident triaged and acknowledged.')
         loadData()
       }
     } catch (err: any) {
@@ -216,14 +213,14 @@ export const DashboardPage: React.FC = () => {
   }
 
   const statusColors: Record<string, string> = {
-    [IncidentStatus.REPORTED]: 'bg-red-950/80 text-red-300 border-red-800',
-    [IncidentStatus.ACKNOWLEDGED]: 'bg-amber-950/80 text-amber-300 border-amber-800',
-    [IncidentStatus.ASSIGNED]: 'bg-blue-950/80 text-blue-300 border-blue-800',
-    [IncidentStatus.ACCEPTED]: 'bg-cyan-950/80 text-cyan-300 border-cyan-800',
-    [IncidentStatus.EN_ROUTE]: 'bg-indigo-950/80 text-indigo-300 border-indigo-800',
-    [IncidentStatus.ON_SCENE]: 'bg-emerald-950/80 text-emerald-300 border-emerald-800',
-    [IncidentStatus.RESOLVED]: 'bg-slate-800 text-slate-300 border-slate-700',
-    [IncidentStatus.CANCELLED]: 'bg-slate-900 text-slate-500 border-slate-800',
+    [IncidentStatus.REPORTED]: 'bg-red-500/10 text-red-600 dark:text-red-300 border-red-500/30',
+    [IncidentStatus.ACKNOWLEDGED]: 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/30',
+    [IncidentStatus.ASSIGNED]: 'bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/30',
+    [IncidentStatus.ACCEPTED]: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border-cyan-500/30',
+    [IncidentStatus.EN_ROUTE]: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/30',
+    [IncidentStatus.ON_SCENE]: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/30',
+    [IncidentStatus.RESOLVED]: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/30',
+    [IncidentStatus.CANCELLED]: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
   }
 
   const availableVehicles = vehicles.filter((v) => v.status === 'available')
@@ -231,15 +228,15 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm transition-colors">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-white">Operations Console</h1>
-            <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Operations Console</h1>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold uppercase border border-slate-200 dark:border-slate-700">
               Role: {role}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Real-time geospatial telemetry, routing and dispatch state machine
           </p>
         </div>
@@ -261,7 +258,7 @@ export const DashboardPage: React.FC = () => {
               className={`py-2 px-4 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
                 gpsStreaming
                   ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-900/40'
-                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               <Navigation className={`w-3.5 h-3.5 ${gpsStreaming ? 'animate-pulse' : ''}`} />
@@ -271,7 +268,7 @@ export const DashboardPage: React.FC = () => {
 
           <button
             onClick={loadData}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+            className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
             title="Refresh state"
           >
             <RefreshCw className="w-4 h-4" />
@@ -283,14 +280,14 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[580px]">
         {/* Left Column: Interactive Map */}
         <div className="lg:col-span-7 flex flex-col h-[520px] lg:h-[650px]">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-xl px-4 py-3 flex items-center justify-between text-xs text-slate-300 font-semibold">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-xl px-4 py-3 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 font-semibold transition-colors">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Live Spatial View (Hyderabad Operational Grid)
             </div>
             <div>
               {selectedIncident ? (
-                <span className="text-red-400">
+                <span className="text-red-500 font-bold">
                   Tracking: {selectedIncident.incidentNumber}
                 </span>
               ) : (
@@ -314,30 +311,30 @@ export const DashboardPage: React.FC = () => {
         <div className="lg:col-span-5 flex flex-col space-y-4">
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
-              <div className="text-xs text-slate-400 font-medium">Active Incidents</div>
-              <div className="text-xl font-black text-red-400 mt-0.5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center shadow-sm">
+              <div className="text-xs text-slate-500 font-medium">Active Incidents</div>
+              <div className="text-xl font-black text-red-500 mt-0.5">
                 {incidents.filter((i) => i.status !== IncidentStatus.RESOLVED && i.status !== IncidentStatus.CANCELLED).length}
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
-              <div className="text-xs text-slate-400 font-medium">Ready Units</div>
-              <div className="text-xl font-black text-emerald-400 mt-0.5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center shadow-sm">
+              <div className="text-xs text-slate-500 font-medium">Ready Units</div>
+              <div className="text-xl font-black text-emerald-500 mt-0.5">
                 {availableVehicles.length} / {vehicles.length}
               </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
-              <div className="text-xs text-slate-400 font-medium">Resolved</div>
-              <div className="text-xl font-black text-slate-300 mt-0.5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-center shadow-sm">
+              <div className="text-xs text-slate-500 font-medium">Resolved</div>
+              <div className="text-xl font-black text-slate-700 dark:text-slate-300 mt-0.5">
                 {incidents.filter((i) => i.status === IncidentStatus.RESOLVED).length}
               </div>
             </div>
           </div>
 
           {/* Incident List */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl flex-1 flex flex-col overflow-hidden shadow-xl">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Activity className="w-4 h-4 text-red-500" />
                 Emergency Queue ({incidents.length})
               </h2>
@@ -376,28 +373,28 @@ export const DashboardPage: React.FC = () => {
                       onClick={() => setSelectedIncident(inc)}
                       className={`p-4 rounded-xl border transition cursor-pointer ${
                         isSelected
-                          ? 'border-red-500/60 bg-slate-800/80 shadow-md'
-                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                          ? 'border-red-500 bg-red-50/40 dark:bg-slate-800/80 shadow-md'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm text-white">
+                            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
                               {inc.incidentNumber}
                             </span>
                             <span
                               className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
-                                statusColors[inc.status] || 'bg-slate-800'
+                                statusColors[inc.status] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                               }`}
                             >
                               {inc.status}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-300 mt-1 line-clamp-2">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-2">
                             {inc.description}
                           </p>
-                          <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-3">
+                          <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-3">
                             <span>📍 {inc.sourceAddress || 'Hyderabad'}</span>
                             <span>⚡ Severity: {inc.severity}/5</span>
                           </div>
@@ -406,7 +403,7 @@ export const DashboardPage: React.FC = () => {
                         <Link
                           to={`/incident/${inc._id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
                           title="View detailed timeline and telemetry"
                         >
                           <ArrowRight className="w-4 h-4" />
@@ -414,7 +411,7 @@ export const DashboardPage: React.FC = () => {
                       </div>
 
                       {/* State Machine Transition Actions */}
-                      <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap gap-2">
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-2">
                         {canAcknowledge && (
                           <button
                             onClick={(e) => {
@@ -498,22 +495,22 @@ export const DashboardPage: React.FC = () => {
 
       {/* Dispatcher Unit Assignment Modal */}
       {assignModalIncident && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">
               Assign Unit to {assignModalIncident.incidentNumber}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
               Select an available emergency vehicle to calculate dispatch route and dispatch responder
             </p>
 
             <form onSubmit={handleAssign} className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">
                   Available Fleet Units ({availableVehicles.length})
                 </label>
                 {availableVehicles.length === 0 ? (
-                  <div className="p-3 bg-red-950/40 border border-red-800 rounded-lg text-xs text-red-300">
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-600 dark:text-red-400">
                     No units currently available. All vehicles are on active dispatch.
                   </div>
                 ) : (
@@ -523,8 +520,8 @@ export const DashboardPage: React.FC = () => {
                         key={v._id}
                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer text-xs transition ${
                           selectedVehicleId === v._id
-                            ? 'border-blue-500 bg-blue-950/40 text-white'
-                            : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-300'
+                            ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-white font-bold'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -537,12 +534,12 @@ export const DashboardPage: React.FC = () => {
                             className="accent-blue-600"
                           />
                           <div>
-                            <div className="font-bold">{v.plateNumber}</div>
-                            <div className="text-[10px] text-slate-400 capitalize">{v.type.replace('_', ' ')}</div>
+                            <div>{v.plateNumber}</div>
+                            <div className="text-[10px] text-slate-500 capitalize">{v.type.replace('_', ' ')}</div>
                           </div>
                         </div>
                         {v.driver && (
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-slate-500">
                             Driver: <strong>{v.driver.name}</strong>
                           </div>
                         )}
@@ -556,7 +553,7 @@ export const DashboardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setAssignModalIncident(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300"
                 >
                   Cancel
                 </button>

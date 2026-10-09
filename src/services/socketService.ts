@@ -5,6 +5,7 @@ import { config } from '../config/env.js'
 import User from '../models/User.js'
 import Vehicle from '../models/Vehicle.js'
 import Incident from '../models/Incident.js'
+import Session from '../models/Session.js'
 import { UserRole } from '../config/constants.js'
 
 let io: Server | null = null
@@ -47,7 +48,19 @@ export function initSocketServer(server: HttpServer): Server {
         return next(new Error('User not found or inactive'))
       }
 
+      // Verify user has an active, non-revoked session
+      const activeSession = await Session.findOne({
+        user: user._id,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
+      })
+
+      if (!activeSession) {
+        return next(new Error('Session revoked or expired. Authentication required.'))
+      }
+
       socket.data.user = user
+      socket.data.userId = String(user._id)
       next()
     } catch (err: any) {
       next(new Error(`Socket authentication failed: ${err.message}`))
@@ -201,4 +214,10 @@ export function broadcastIncidentAssigned(incident: any, responderId: string) {
 export function broadcastFacilityUpdated(facility: any) {
   if (!io) return
   io.to('role:dispatcher').to('role:hospital_staff').to('role:admin').emit('facility:capacity_update', facility)
+}
+
+export function disconnectUserSockets(userId: string, reason = 'Session terminated or revoked') {
+  if (!io) return
+  io.to(`user:${userId}`).emit('auth:revoked', { message: reason })
+  io.in(`user:${userId}`).disconnectSockets(true)
 }

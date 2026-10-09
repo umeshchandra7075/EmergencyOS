@@ -22,6 +22,10 @@ export interface IIncidentRoute {
   geometry: any // GeoJSON LineString
   alternatives?: IRouteAlternative[]
   isFallback?: boolean
+  isNavigable?: boolean
+  diagnosticOnly?: boolean
+  status?: string
+  warningMessage?: string
   provider?: string
   calculatedAt: Date
 }
@@ -131,6 +135,10 @@ const incidentSchema = new Schema<IIncident>(
       geometry: { type: Schema.Types.Mixed },
       alternatives: [{ type: Schema.Types.Mixed }],
       isFallback: { type: Boolean, default: false },
+      isNavigable: { type: Boolean, default: true },
+      diagnosticOnly: { type: Boolean, default: false },
+      status: { type: String, default: 'available' },
+      warningMessage: { type: String },
       provider: { type: String, default: 'OSRM' },
       calculatedAt: { type: Date },
     },

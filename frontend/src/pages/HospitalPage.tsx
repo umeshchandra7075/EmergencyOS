@@ -77,21 +77,21 @@ export const HospitalPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl flex items-center justify-between transition-colors">
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-2">
-            <Hospital className="w-6 h-6 text-purple-400" />
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Hospital className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             Hospital Resource & Capacity Console
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             Real-time synchronization of hospital triage availability, ICU units, and oxygen cylinders
           </p>
         </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-xl transition-colors">
         <div className="mb-6">
-          <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
             Select Medical Facility
           </label>
           <select
@@ -100,7 +100,7 @@ export const HospitalPage: React.FC = () => {
               const target = facilities.find((f) => f._id === e.target.value)
               if (target) selectHospital(target)
             }}
-            className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             {facilities.map((f) => (
               <option key={f._id} value={f._id}>
@@ -112,78 +112,78 @@ export const HospitalPage: React.FC = () => {
 
         <form onSubmit={handleUpdate} className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-extrabold text-blue-400 uppercase">General Bed Capacity</h3>
+            <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <h3 className="text-xs font-extrabold text-blue-600 dark:text-blue-400 uppercase">General Bed Capacity</h3>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Available Beds</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Available Beds</label>
                 <input
                   type="number"
                   min="0"
                   value={availableBeds}
                   onChange={(e) => setAvailableBeds(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold"
+                  className="w-full p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Total Bed Count</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Total Bed Count</label>
                 <input
                   type="number"
                   min="0"
                   value={totalBeds}
                   onChange={(e) => setTotalBeds(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold"
+                  className="w-full p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
               </div>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-extrabold text-purple-400 uppercase">ICU Emergency Beds</h3>
+            <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <h3 className="text-xs font-extrabold text-purple-600 dark:text-purple-400 uppercase">ICU Emergency Beds</h3>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Available ICU Units</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Available ICU Units</label>
                 <input
                   type="number"
                   min="0"
                   value={icuAvailable}
                   onChange={(e) => setIcuAvailable(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold"
+                  className="w-full p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Total ICU Beds</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Total ICU Beds</label>
                 <input
                   type="number"
                   min="0"
                   value={icuTotal}
                   onChange={(e) => setIcuTotal(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold"
+                  className="w-full p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
               </div>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-extrabold text-emerald-400 uppercase">Oxygen & Critical Supplies</h3>
+            <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <h3 className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Oxygen & Critical Supplies</h3>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Available Oxygen Cylinders</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Available Oxygen Cylinders</label>
                 <input
                   type="number"
                   min="0"
                   value={oxygenAvailable}
                   onChange={(e) => setOxygenAvailable(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold"
+                  className="w-full p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
               </div>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-extrabold text-amber-400 uppercase">Patient Admissions</h3>
+            <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <h3 className="text-xs font-extrabold text-amber-600 dark:text-amber-400 uppercase">Patient Admissions</h3>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Current Active Inpatients</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Current Active Inpatients</label>
                 <input
                   type="number"
                   min="0"
                   value={currentPatients}
                   onChange={(e) => setCurrentPatients(parseInt(e.target.value, 10))}
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-bold"
+                  className="w-full p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
                 />
               </div>
             </div>
@@ -192,7 +192,7 @@ export const HospitalPage: React.FC = () => {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <CheckCircle className="w-5 h-5" />
             {saving ? 'Publishing Updates...' : 'Publish Hospital Capacity Update'}

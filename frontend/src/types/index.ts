@@ -29,6 +29,24 @@ export interface User {
   vehicle?: any
 }
 
+export enum VehicleType {
+  AMBULANCE = 'ambulance',
+  FIRE_ENGINE = 'fire_engine',
+  PATROL_CAR = 'patrol_car',
+  RESCUE_VEHICLE = 'rescue_vehicle',
+  HAZMAT_VEHICLE = 'hazmat_vehicle',
+}
+
+export enum VehicleStatus {
+  AVAILABLE = 'available',
+  ASSIGNED = 'assigned',
+  EN_ROUTE = 'en_route',
+  ON_SCENE = 'on_scene',
+  RETURNING = 'returning',
+  MAINTENANCE = 'maintenance',
+  OUT_OF_SERVICE = 'out_of_service',
+}
+
 export interface IncidentRoute {
   distanceMeters: number
   durationSeconds: number
@@ -38,6 +56,10 @@ export interface IncidentRoute {
   }
   alternatives?: any[]
   isFallback?: boolean
+  isNavigable?: boolean
+  diagnosticOnly?: boolean
+  warningMessage?: string
+  status?: string
   provider?: string
   calculatedAt?: string
 }

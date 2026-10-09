@@ -2,9 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg-base: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+}
+
+.dark {
+  --color-bg-base: #020617;
+  --color-bg-surface: #0f172a;
+  --color-bg-elevated: #1e293b;
+  --color-border: #1e293b;
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 font-sans;
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans transition-colors duration-200 antialiased;
+  }
+
+  /* Accessible focus indicator defaults */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+    @apply outline-none ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-900;
   }
 }
 
@@ -34,4 +57,21 @@
   height: 100%;
   border-radius: 0.75rem;
   z-index: 10;
+  font-family: inherit;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.6);
 }
